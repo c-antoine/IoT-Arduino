@@ -28,7 +28,7 @@
   #include <avr/power.h>
 #endif
 #define PIN            14
-#define NUMPIXELS      7
+#define NUMPIXELS      7 // Nombre de pixels 
 Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
 int delayval = 500;
 
@@ -68,41 +68,54 @@ void setup_wifi() {
   Serial.println(WiFi.localIP());
 }
 
+String getValue(String data, char separator, int index)
+{
+    int found = 0;
+    int strIndex[] = { 0, -1 };
+    int maxIndex = data.length() - 1;
+
+    for (int i = 0; i <= maxIndex && found <= index; i++) {
+        if (data.charAt(i) == separator || i == maxIndex) {
+            found++;
+            strIndex[0] = strIndex[1] + 1;
+            strIndex[1] = (i == maxIndex) ? i+1 : i;
+        }
+    }
+    return found > index ? data.substring(strIndex[0], strIndex[1]) : "";
+}
+
 void callback(char* topic, byte* payload, unsigned int length) {
-  Serial.print("Message arrived [");
-  Serial.print(topic);
-  Serial.print("] ");
-  for (int i = 0; i < length; i++) {
-    Serial.print((char)payload[i]);
-  }
-  Serial.println();
 
-  // Switch on the LED if an 1 was received as first character
-
-  if ((char)payload[0] == '1') {
-    for(int i=0;i<NUMPIXELS;i++){
-      pixels.setPixelColor(i, pixels.Color(0,150,0));
-      pixels.show();
-      delay(delayval);
-    }
-  } else {
-    for(int i=0;i<NUMPIXELS;i++){
-      pixels.setPixelColor(i, pixels.Color(150,150,150));
-      pixels.show();
-      delay(delayval);
-    }
-  }
+  String str((char*)payload);
+  Serial.print(str);
+  Serial.println("Message arrived");
   
-  /* OIGINAL CODE
-  if ((char)payload[0] == '1') {
-    digitalWrite(BUILTIN_LED, LOW);   // Turn the LED on (Note that LOW is the voltage level
-    // but actually the LED is on; this is because
-    // it is acive low on the ESP-01)
-  } else {
-    digitalWrite(BUILTIN_LED, HIGH);  // Turn the LED off by making the voltage HIGH
+  String data;
+  for (int i = 0; i < length; i++) {
+    if((char)payload[i]!='%'){
+      data=data+(char)payload[i];
+      Serial.println((char)payload[i]);
+    }
   }
-  */
 
+  Serial.println("GETTING VALUES");
+  
+  int intR;
+  int intG;
+  int intB;
+
+  intR = getValue(data, ',', 0).toInt();
+  intG = getValue(data, ',', 1).toInt();
+  intB = getValue(data, ',', 2).toInt();
+  Serial.println(intR);
+  Serial.println(intG);
+  Serial.println(intB); 
+
+   for(int i=0;i<NUMPIXELS;i++){
+    pixels.setPixelColor(i, pixels.Color(intR,intG,intB));
+    pixels.show();
+    delay(delayval);
+   }
 }
 
 void reconnect() {
@@ -151,17 +164,5 @@ void loop() {
     reconnect();
   }
   client.loop();
-
- /*
-  long now = millis();
-  if (now - lastMsg > 2000) {
-    lastMsg = now;
-    ++value;
-    snprintf (msg, 75, "Esp8266 is still alive ! #%ld", value);
-    Serial.print("Publish message: ");
-    Serial.println(msg);
-    client.publish("aliveMsg", msg);
-  }
-  */
 }
 
